@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.env*
+!.env.example
+.data/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local recordings, credentials, and OS files
+*.mp4
+*.mov
+*.pem
+*.key
+*.p12
+*.zip
+.DS_Store
+npm-debug.log*
