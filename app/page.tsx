@@ -10,6 +10,7 @@ import {
   Crosshair,
   Activity,
 } from "lucide-react";
+import { MAX_VIDEO_BYTES, UPLOAD_LIMIT_MESSAGE } from "@/lib/upload-limits";
 import type { Session } from "@/lib/schema";
 const seconds = (n: number) =>
   `${Math.floor(n / 60)
@@ -28,7 +29,14 @@ export default function Home() {
   const video = useRef<HTMLVideoElement>(null);
   async function request(url: string, options?: RequestInit) {
     const r = await fetch(url, options);
-    const data = await r.json();
+    const data = await r
+      .json()
+      .catch(() => ({
+        error:
+          r.status === 413
+            ? UPLOAD_LIMIT_MESSAGE
+            : "The server could not complete this request. Please try again.",
+      }));
     if (!r.ok) throw new Error(data.error || "Request failed.");
     return data;
   }
@@ -55,9 +63,18 @@ export default function Home() {
     setBusy("Uploading and validating video…");
     setError("");
     try {
-      const data = await request("/api/sessions", {
+      const form = new FormData(e.currentTarget);
+      const file = form.get("video");
+      if (
+        !(file instanceof File) ||
+        !file.size ||
+        file.size > MAX_VIDEO_BYTES ||
+        !/\.(mp4|mov)$/i.test(file.name)
+      )
+        throw new Error(UPLOAD_LIMIT_MESSAGE);
+      const data = await request("/api/upload", {
         method: "POST",
-        body: new FormData(e.currentTarget),
+        body: form,
       });
       await refresh();
       open(data);

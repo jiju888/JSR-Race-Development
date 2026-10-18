@@ -24,13 +24,19 @@ The report includes strengths, improvements, corner observations with evidence a
 
 Data is saved under ignored `.data/` on the server, outside public assets. Back up that directory to retain sessions. This is a **single-user local application**, not a multi-tenant hosted service. It binds to localhost by default. All routes, including media and frames, pass through access middleware. Non-local host access requires `JSR_PASSWORD`; use username `jsr`. Configure a strong password and HTTPS before any remote exposure. Everyone with that password shares all sessions. Local users of the same computer can access a passwordless local instance; set a password if that is unsuitable.
 
-Video processing uses subprocess timeouts, bounded frame sizes and six frames per analysis. A maximum of two analyses can run in a single server process. Uploads are buffered in memory, so use short recordings and run only one upload at a time. There is no distributed job queue, per-user quota, account system, or malware scanning. Do not deploy this directly as a public upload service. Persistent disk and installed FFmpeg are needed; ephemeral/serverless hosting is not supported by this version.
+Video processing uses subprocess timeouts, bounded frame sizes and six frames per analysis. A maximum of two analyses can run in a single server process. Uploads stream directly to private disk storage with backpressure through `/api/upload`; the browser and server share a 100 MB (104,857,600 byte) file limit. Multipart metadata has a separate 64 KB overhead budget. The upload endpoint bypasses middleware body cloning and Next body parsing, but applies the same host/password checks plus a same-origin check in the handler. Rejected or interrupted uploads are removed. There is no distributed job queue, per-user quota, account system, or malware scanning. Do not deploy this directly as a public upload service. Persistent disk and installed FFmpeg are needed; ephemeral/serverless hosting is not supported by this version.
 
 Video frames may contain usernames or other personal information. Review footage before sending it to OpenAI, and consult OpenAI's API data policies. AI observations can be wrong. Sampled stills cannot reliably establish precise braking points, speeds, input angles, motion, or time gains. No telemetry measurements are inferred.
 
 Cloud environments can alternatively bind a secure `JSR_AI_KEY` secret to `api.openai.com`; it is accepted as a server-only fallback because the platform reserves `OPENAI_` names. Never put a real key in saved scripts.
 
 To repeat the HTTP smoke checks with the server running and no API key configured, run `node tests/http-smoke.mjs` (requires curl). It creates generated test footage, exercises uploads and deletion, and cleans up its test session. These are not real driving or AI-quality tests. MOV playback depends on the browser and the recording codec; use H.264 MP4 for widest compatibility.
+
+## Upload regression checks
+
+Run `npm run build`, then `npm run test:uploads` (requires FFmpeg and curl). The test starts its own production server on port 3107, uploads generated MP4/MOV recordings, checks chunked uploads above 10 MB, the exact 100 MB boundary and oversized rejection, verifies origin/host protection and video playback, and deletes its test sessions. No API key or simulator footage is needed. Keep port 3107 free while running it.
+
+If you run behind a reverse proxy, allow at least 101 MB request bodies there and disable proxy request buffering where supported. The application does not change external proxy limits. Do not add middleware matching `/api/upload`; its handler performs access checks directly so Next does not clone the video body.
 
 ## Scope and next steps
 

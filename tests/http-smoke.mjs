@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-const base = "http://127.0.0.1:3000";
+const base = process.env.JSR_TEST_BASE_URL || "http://127.0.0.1:3000";
 const dir = await mkdtemp(path.join(tmpdir(), "jsr-http-"));
 let id;
 try {
@@ -26,11 +26,11 @@ try {
     { encoding: "utf8" },
   );
   assert.equal(blocked, "403");
-  const cross = await fetch(base + "/api/sessions", {
+  const cross = await fetch(base + "/api/upload", {
     method: "POST",
     headers: { origin: "https://other.example" },
   });
-  assert.equal(cross.status, 400);
+  assert.equal(cross.status, 403);
   const file = path.join(dir, "test.mp4");
   execFileSync("ffmpeg", [
     "-nostdin",
@@ -55,7 +55,7 @@ try {
   data.set("simulator", "Test simulator");
   data.set("track", "Generated test footage");
   data.set("vehicle", "Test car");
-  const uploaded = await fetch(base + "/api/sessions", {
+  const uploaded = await fetch(base + "/api/upload", {
     method: "POST",
     body: data,
   });
@@ -87,7 +87,7 @@ try {
   bad.set("track", "Test");
   bad.set("vehicle", "Test");
   assert.equal(
-    (await fetch(base + "/api/sessions", { method: "POST", body: bad })).status,
+    (await fetch(base + "/api/upload", { method: "POST", body: bad })).status,
     400,
   );
   assert.equal(
